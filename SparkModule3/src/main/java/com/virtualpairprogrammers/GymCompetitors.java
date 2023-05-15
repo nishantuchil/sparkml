@@ -6,6 +6,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.spark.ml.feature.OneHotEncoder;
+import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.regression.LinearRegression;
 import org.apache.spark.ml.regression.LinearRegressionModel;
@@ -39,10 +41,22 @@ public class GymCompetitors {
             .option("inferSchema", true)
             .csv("src/main/resources/GymCompetition.csv");
 
-    csvData.schema();
+    csvData.printSchema();
+
+    StringIndexer genderIndexer = new StringIndexer();
+    genderIndexer.setInputCol("Gender");
+    genderIndexer.setOutputCol("GenderIndex");
+    csvData = genderIndexer.fit(csvData).transform(csvData);
+    csvData.show();
+
+    OneHotEncoder genderEncoder = new OneHotEncoder();
+    genderEncoder.setInputCols(new String[] {"GenderIndex"});
+    genderEncoder.setOutputCols(new String[] {"GenderVector"});
+    csvData = genderEncoder.fit(csvData).transform(csvData);
+    csvData.show();
 
     VectorAssembler vectorAssembler = new VectorAssembler();
-    vectorAssembler.setInputCols(new String[] {"Age", "Height", "Weight"});
+    vectorAssembler.setInputCols(new String[] {"Age", "Height", "Weight", "GenderVector"});
     vectorAssembler.setOutputCol("features");
     Dataset<Row> csvDataWithFeatures = vectorAssembler.transform(csvData);
     Dataset<Row> modelInputData =
